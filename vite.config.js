@@ -5,6 +5,6 @@ export default defineConfig({
   plugins: [react()],
   base: '/powercoffee-investor-dashboard/',
   build: {
-    crossorigin: false,
+    crossOrigin: false,
   },
 })
