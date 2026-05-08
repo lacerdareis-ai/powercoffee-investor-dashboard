@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && python3 scripts/clean_html.py",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
