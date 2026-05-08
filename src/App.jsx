@@ -43,25 +43,23 @@ function parseBR(raw) {
 
 // ─── FALLBACK ───
 const FB = {
-  monthlyUnits:[150,245,360,450,540,648,778,933,1120,1344,1612,1935,2322,2786,3344,4012,4815,5778],
+  monthlyUnits:[100,130,180,225,270,324,389,467,560,672,806,967,1161,1393,1672,2006,2407,2889],
   price:21.90,
-  yearlyRevenue:[221507.68,443015.35,1329046.06,1993569.09,2990353.64,3588424.36,4306109.24],
-  yearlyCosts:[306524.42,543435.38,1015501.82,1442739.76,2075350.98,2466654.06,2933841.05],
-  yearlyEbitda:[-85016.74,-100420.03,313544.24,550829.33,915002.66,1121770.30,1372268.19],
-  yearlyEbitdaPct:[-38.38,-22.67,23.59,27.63,30.60,31.26,31.87],
-  yearlyValuation:[-510100.46,-602520.16,1881265.42,3304975.96,5490015.95,6730621.83,8233609.15],
+  yearlyRevenue:[111466,222931,668794,1003190,1504785,1805743,2166891],
+  yearlyCosts:[79155,163309,451418,660772,972973,1163209,1391055],
+  yearlyEbitda:[32310,59622,217376,342418,531812,642534,775836],
+  yearlyEbitdaPct:[28.99,26.74,32.50,34.13,35.34,35.58,35.80],
+  yearlyValuation:[193862,357734,1304254,2054510,3190874,3855204,4655016],
   yearCB:{
-    ceo:[60000,66000,72600,79860,87846,96630.6,106293.66],
-    coo:[36000,43200,47520,52272,57499.2,63249.12,69574.03],
-    mktGtm:[22150.77,24365.84,26802.43,29482.67,32430.94,35674.03,39241.44],
-    mktAds:[64491.95,132904.61,132904.61,199356.91,299035.36,358842.44,430610.92],
-    warehouse:[15000,45000,49500,54450,59895,65884.5,72472.95],
-    cogs:[61900.78,141603.08,424809.24,637213.86,955820.8,1146984.96,1376381.95],
-    logistics:[42480.92,84961.85,254885.55,382328.32,573492.48,688190.97,825829.17],
-    travel:[4500,5400,6480,7776,9331.2,11197.44,13436.93],
+    aiStructures:[5229,5752,6327,6960,7656,8421,9263],
+    mktAds:[7900,11147,66879,100319,150479,180574,216689],
+    warehouse:[9000,27000,29700,32670,35937,39531,43484],
+    cogs:[31149,71257,213770,320654,480982,577178,692614],
+    logistics:[21377,42754,128262,192393,288589,346307,415568],
+    travel:[4500,5400,6480,7776,9331,11197,13437],
   },
   preMoney:2700000, raise:300000,
-  cap:{ postFounder:57, postCofounder:23, investor:10 },
+  cap:{ postFounder:59, postCofounder:23, investor:10 },
 };
 
 function parseCSV(csv) {
@@ -76,9 +74,13 @@ function parseCSV(csv) {
     const pr = fr("Price pack");
     const mu = trr ? trr.slice(1,19).map(parseBR) : FB.monthlyUnits;
     const price = pr ? (parseBR(pr[1])||FB.price) : FB.price;
+
+    // Yearly revenue
     const ri = lines.findIndex(r=>r[0]&&r[0].toLowerCase()==="receita");
     let yr = FB.yearlyRevenue;
     if(ri>=0){ const u=lines.slice(ri).find(r=>r[0]&&r[0].includes("U$")); if(u) yr=u.slice(1,8).map(parseBR); }
+
+    // Yearly costs
     const ci = lines.findIndex(r=>r[0]&&r[0]==="COSTS");
     let yc=FB.yearlyCosts, ycb=FB.yearCB;
     if(ci>=0){
@@ -86,9 +88,7 @@ function parseCSV(csv) {
       const tc=cl.find(r=>r[0]&&r[0]==="Total Costs"); if(tc) yc=tc.slice(1,8).map(parseBR);
       const fc=(l)=>cl.find(r=>r[0]&&r[0].toLowerCase().includes(l.toLowerCase()));
       ycb={
-        ceo:fc("CEO")?fc("CEO").slice(1,8).map(parseBR):FB.yearCB.ceo,
-        coo:fc("COO")?fc("COO").slice(1,8).map(parseBR):FB.yearCB.coo,
-        mktGtm:fc("Marketing (GTM)")?fc("Marketing (GTM)").slice(1,8).map(parseBR):FB.yearCB.mktGtm,
+        aiStructures:fc("AI Structures")?fc("AI Structures").slice(1,8).map(parseBR):FB.yearCB.aiStructures,
         mktAds:fc("Marketing (ads)")?fc("Marketing (ads)").slice(1,8).map(parseBR):FB.yearCB.mktAds,
         warehouse:fc("WareHouse")?fc("WareHouse").slice(1,8).map(parseBR):FB.yearCB.warehouse,
         cogs:fc("CGS")?fc("CGS").slice(1,8).map(parseBR):FB.yearCB.cogs,
@@ -96,16 +96,39 @@ function parseCSV(csv) {
         travel:fc("Travel")?fc("Travel").slice(1,8).map(parseBR):FB.yearCB.travel,
       };
     }
+
+    // EBITDA
     const ep=lines.find(r=>r[0]&&r[0]==="EBITDA %");
     const eu=lines.find(r=>r[0]&&r[0].includes("EBITDA U$"));
     const vr=lines.find(r=>r[0]&&r[0].includes("EBITDA 6X"));
+
+    // Pre-money & raise
+    const pmRow=fr("PreMoney");
+    const raiseRow=fr("Funding Raising");
+    const preMoney=pmRow?(parseBR(pmRow[1])||FB.preMoney):FB.preMoney;
+    const raise=raiseRow?(parseBR(raiseRow[1])||FB.raise):FB.raise;
+
+    // Cap table
+    const pv=(row)=>row&&row[1]?parseBR(row[1].replace(/%/g,"")):0;
+    const capIdx=lines.findIndex(r=>r[0]&&r[0].toLowerCase().includes("captable post"));
+    let cap=FB.cap;
+    if(capIdx>=0){
+      const cl2=lines.slice(capIdx+1,capIdx+12);
+      const fc2=(lbl)=>cl2.find(r=>r[0]&&r[0].toLowerCase().includes(lbl.toLowerCase()));
+      const founderRow=cl2.find(r=>r[0]&&r[0].toLowerCase().includes("founder")&&!r[0].toLowerCase().includes("co-")&&!r[0].toLowerCase().includes("co "));
+      const pf=founderRow?pv(founderRow):0;
+      const pc=pv(fc2("co-founder")||fc2("cofounder"));
+      const pi=pv(fc2("termsheet")||fc2("investor"));
+      if(pf>0) cap={postFounder:pf,postCofounder:pc||FB.cap.postCofounder,investor:pi||FB.cap.investor};
+    }
+
     return {
       monthlyUnits:mu, price,
       yearlyRevenue:yr, yearlyCosts:yc,
       yearlyEbitda:eu?eu.slice(1,8).map(parseBR):FB.yearlyEbitda,
       yearlyEbitdaPct:ep?ep.slice(1,8).map(v=>parseBR(v.replace("%",""))):FB.yearlyEbitdaPct,
       yearlyValuation:vr?vr.slice(1,8).map(parseBR):FB.yearlyValuation,
-      yearCB:ycb, preMoney:FB.preMoney, raise:FB.raise, cap:FB.cap,
+      yearCB:ycb, preMoney, raise, cap,
     };
   } catch(e) { return FB; }
 }
@@ -123,11 +146,10 @@ function project(bp, inv) {
   const sv=yv[6]*(eq/100);
   const mu=inv/(bp.yearlyCosts[0]||1);
   const pa=[
-    {label:"Marketing & Ads",color:C.accent,values:bp.yearCB.mktGtm.map((v,i)=>v+bp.yearCB.mktAds[i])},
+    {label:"Marketing & Ads",color:C.accent,values:bp.yearCB.mktAds},
     {label:"COGS (Production)",color:"#6b7280",values:bp.yearCB.cogs},
     {label:"Logistics",color:"#4b5563",values:bp.yearCB.logistics},
-    {label:"CEO Salary",color:"#9ca3af",values:bp.yearCB.ceo},
-    {label:"COO Salary",color:"#6b7280",values:bp.yearCB.coo},
+    {label:"AI Structures",color:"#9ca3af",values:bp.yearCB.aiStructures},
     {label:"Warehouse",color:"#374151",values:bp.yearCB.warehouse},
     {label:"Travel",color:"#1f2937",values:bp.yearCB.travel},
   ].map(c=>({...c,y1:c.values[0],pct:(c.values[0]/(bp.yearlyCosts[0]||1))*100,share:(c.values[0]/(bp.yearlyCosts[0]||1))*inv}));
@@ -246,11 +268,14 @@ export default function App() {
   useEffect(()=>{fetch_();},[fetch_]);
 
   const d=useMemo(()=>project(bp,inv),[bp,inv]);
+  const FIXED_ADVISORS = 8; // Nicholas 2% + Andre 1% + Stock Pool 5%
+  const founderTotal = bp.cap.postFounder + bp.cap.postCofounder;
+  const founderShare = 100 - d.eq - FIXED_ADVISORS;
   const ct=[
-    {name:"Leonardo Lacerda (Founder)",pct:bp.cap.postFounder*(100-d.eq-10)/(100-bp.cap.investor-10)},
-    {name:"Bruno Matozo (Co-Founder)",pct:bp.cap.postCofounder*(100-d.eq-10)/(100-bp.cap.investor-10)},
+    {name:"Leonardo Lacerda (Founder)",pct:(bp.cap.postFounder/founderTotal)*founderShare},
+    {name:"Bruno Matozo (Co-Founder)",pct:(bp.cap.postCofounder/founderTotal)*founderShare},
     {name:"Investor (You)",pct:d.eq},
-    {name:"Chantel Colley (Advisor)",pct:2},{name:"Nicholas Santos (Advisor)",pct:2},
+    {name:"Nicholas Santos (Advisor)",pct:2},
     {name:"Andre Lopes (Advisor)",pct:1},{name:"Stock Pool",pct:5},
   ];
 
@@ -379,7 +404,7 @@ export default function App() {
                 </tr></thead>
                 <tbody>
                   {Object.entries(bp.yearCB).map(([k,v],ri)=>{
-                    const lb={ceo:"CEO",coo:"COO",mktGtm:"Mkt (GTM)",mktAds:"Mkt (Ads)",warehouse:"Warehouse",cogs:"COGS",logistics:"Logistics",travel:"Travel"};
+                    const lb={aiStructures:"AI Structures",mktAds:"Mkt (Ads)",warehouse:"Warehouse",cogs:"COGS",logistics:"Logistics",travel:"Travel"};
                     return (<tr key={ri} style={{borderBottom:`1px solid ${C.border}`}}>
                       <td style={{padding:"8px 6px",color:C.white}}>{lb[k]||k}</td>
                       {v.map((val,ci)=><td key={ci} style={{padding:"8px 6px",textAlign:"right",color:C.muted}}>{fmt(val)}</td>)}
